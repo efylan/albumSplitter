@@ -1,5 +1,6 @@
 #!/usr/bin/python
-
+# TODO: UPDATE deflacue FROM 1.0.0 TO 2.0.1
+# THIS SCRIPT WORKS ONLY WITH VERSION 1.0:.0
 from pydub import AudioSegment as aud
 from deflacue import deflacue as cue
 import sys
@@ -64,7 +65,7 @@ gYear = gYear.encode('utf-8')
 gAlbum = gAlbum.encode('utf-8')
 gGenre = gGenre.encode('utf-8')
 
-print (gArtist, " - ", gGenre, " - ", gYear, " - ", gAlbum)
+print (gArtist.decode(), " - ", gGenre.decode(), " - ", gYear.decode(), " - ", gAlbum.decode())
 
 print ("Loading media file...")
 toSplit = aud.from_file(args.album, extension)
@@ -104,7 +105,7 @@ for song in metadata:
     try:
         tmp.export(filename,
                 format=args.format,
-                tags={'artist': artist, 'album_artist': artist, 'year': year, 'album': album, 'track': track, 'title': title, 'genre': genre})
+                tags={'artist': artist.decode(), 'album_artist': artist.decode(), 'year': year.decode(), 'album': album.decode(), 'track': track, 'title': title.decode(), 'genre': genre.decode()})
         if args.cover != None:
             if subprocess.call(["metaflac", "--import-picture-from=" + args.cover, fileName]):
                 raise BlockingIOError("Couldn't add cover")
