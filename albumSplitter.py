@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # TODO: UPDATE deflacue FROM 1.0.0 TO 2.0.1
-# THIS SCRIPT WORKS ONLY WITH VERSION 1.0:.0
+# THIS SCRIPT WORKS ONLY WITH VERSION 1.0.0
 from pydub import AudioSegment as aud
 from deflacue import deflacue as cue
 import sys
