@@ -6,9 +6,9 @@ To use albumSplitter.py, you need pydub:
 
     pip3 install pydub
 
-and deflacue:
+and deflacue version 1.0.0:
 
-    pip3 install deflacue
+    pip3 install deflacue==1.0.0
 
 You'll also need ffmpeg:
 
