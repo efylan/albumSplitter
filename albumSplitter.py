@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 from pydub import AudioSegment as aud
 from deflacue import deflacue as cue
@@ -7,7 +7,7 @@ import os
 import subprocess
 import argparse
 
-version = "1.3.1"
+version = "1.2.0"
 
 def yes_or_no(question):
     while "the answer is invalid":
@@ -29,15 +29,6 @@ def create_dir(string):
         os.makedirs(string)
     return string
 
-def slugify(string):
-    ilegals = [':', '"', '/', '\\', '|']
-    ilegalsInv = ['<', '>', '?', '*']
-    for i in ilegals:
-        string = string.replace(i, '-')
-    for i in ilegalsInv:
-        string = string.replace(i, '')
-    return string
-
 parser = argparse.ArgumentParser(description='Splits albums files described with a cue sheet')
 parser.add_argument('album', type=existing_file, help='Input audio file of the album to split')
 parser.add_argument('cue', type=existing_file, help='Input cue sheet defining tracks of album')
@@ -45,27 +36,11 @@ parser.add_argument('-d', '--dest', type=create_dir, default='.', help='Destinat
 parser.add_argument('-c', '--cover', type=str, help='Cover image file')
 parser.add_argument('-f', '--format', type=str, default='flac', help='Output audio format, can be whatever ffmpeg is compatible with: http://www.ffmpeg.org/general.html#Audio-Codecs. Default: %(default)s')
 parser.add_argument('-s', '--string', type=str, default='%artist%/%year% - %album%/%track% - %title%', help='Formatting string for the output. Supported items are: %%artist%%, %%year%%, %%album%%, %%track%%, %%title%% and %%genre%%. Default: %(default)s')
-parser.add_argument('-v', '--version', action='store_true', default=False, help='Print version and quit')
-parser.add_argument('-V', '--verbose', action='store_true', default=False, help ='Make it more verbose')
-parser.add_argument('-bd', '--bitdepth', type=str, default='s16', help='Configure bitdepth of output files, accept ffmpeg bitdepth argument, use "ffmpeg -sample-fmts" to see available bit depths. Default: %(default)s')
-parser.add_argument('-sr', '--samplerate', type=str, default='44100', help='Configure sample rate of outpute files. Default: %(default)s')
 args = parser.parse_args()
 
-if args.version:
-    print (version)
-    sys.exit(0)
 # Load
-print("Loading metadata...")
-try:
-    metadata = cue.CueParser(args.cue, encoding="utf-8").get_data_tracks()
-except:
-    print("not utf-8, going to try latin1")
-    try:
-        metadata = cue.CueParser(args.cue, encoding="latin1").get_data_tracks()
-    except:
-        print("not latin1 either, you're on your own now")
-        sys.exit(1)
-
+print ("Loading metadata...")
+metadata = cue.CueParser(args.cue, encoding="iso-8859-1").get_data_tracks()
 extension = os.path.splitext(args.album)[1][1:]
 
 gArtist = metadata[0]['PERFORMER']
@@ -89,21 +64,16 @@ gYear = gYear.encode('utf-8')
 gAlbum = gAlbum.encode('utf-8')
 gGenre = gGenre.encode('utf-8')
 
-gArtist = gArtist.decode('utf-8')
-gYear = gYear.decode('utf-8')
-gAlbum = gAlbum.decode('utf-8')
-gGenre = gGenre.decode('utf-8')
+print (gArtist, " - ", gGenre, " - ", gYear, " - ", gAlbum)
 
-print(gArtist + " - " + gGenre +" - " + gYear + " - " + gAlbum)
-
-print("Loading media file...")
+print ("Loading media file...")
 toSplit = aud.from_file(args.album, extension)
 
-print("Exporting songs...")
+print ("Exporting songs...")
 for song in metadata:
-    startTime = song['POS_START_SAMPLES'] // (44100 / 1000.) # Don't use actual sample rate of file because deflacue can't know it and uses 44100 to output samples
+    startTime = song['POS_START_SAMPLES'] // (toSplit.frame_rate / 1000.)
     try:
-        endTime = song['POS_END_SAMPLES'] // (44100 / 1000.)
+        endTime = song['POS_END_SAMPLES'] // (toSplit.frame_rate / 1000.)
     except TypeError:
         endTime = None
 
@@ -113,16 +83,15 @@ for song in metadata:
     genre = gGenre
     track = '%02d' % song['TRACK_NUM']
     title = song['TITLE'].encode('utf-8')
-    title = title.decode('utf-8')
 
     #Parse format string to generate filename:
     filename = args.string
-    filename = filename.replace('%artist%', slugify(artist))
-    filename = filename.replace('%year%', slugify(year))
-    filename = filename.replace('%album%', slugify(album))
-    filename = filename.replace('%track%', slugify(track))
-    filename = filename.replace('%title%', slugify(title))
-    filename = filename.replace('%genre%', slugify(genre))
+    filename = filename.replace('%artist%', artist.decode())
+    filename = filename.replace('%year%', year.decode())
+    filename = filename.replace('%album%', album.decode())
+    filename = filename.replace('%track%', track)
+    filename = filename.replace('%title%', title.decode())
+    filename = filename.replace('%genre%', genre.decode())
     filename = os.path.join(args.dest, filename + '.' + args.format.lower())
 
     fulldir = os.path.dirname(filename)
@@ -131,17 +100,13 @@ for song in metadata:
 
     tmp = toSplit[startTime:endTime]
     sys.stdout.write(filename)
-    if args.verbose:
-        sys.stdout.write(' ' + str(startTime) + ' - ' + str(endTime))
-
     sys.stdout.flush()
     try:
         tmp.export(filename,
                 format=args.format,
-                parameters=['-sample_fmt', args.bitdepth, '-ar', args.samplerate],
                 tags={'artist': artist, 'album_artist': artist, 'year': year, 'album': album, 'track': track, 'title': title, 'genre': genre})
         if args.cover != None:
-            if subprocess.call(["metaflac", "--import-picture-from='" + args.cover + "'", fileName]):
+            if subprocess.call(["metaflac", "--import-picture-from=" + args.cover, fileName]):
                 raise BlockingIOError("Couldn't add cover")
         sys.stdout.write(" : DONE\n")
     except:
